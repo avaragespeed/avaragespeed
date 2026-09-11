@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Prędkościomierz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@600;700&family=Orbitron:wght@700;800&family=Rajdhani:wght@600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #14171c;
@@ -188,7 +191,7 @@
 
   .gauge .value {
     font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--num-font, ui-monospace, "SF Mono", Menlo, monospace);
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.02em;
@@ -202,7 +205,7 @@
   }
 
   .gauge--current .value {
-    font-size: calc(clamp(64px, 22vw, 118px) * var(--scale));
+    font-size: calc(clamp(72px, 26vw, 140px) * var(--scale));
     color: var(--amber);
   }
 
@@ -211,7 +214,7 @@
   }
 
   .gauge--average .value {
-    font-size: calc(clamp(40px, 13vw, 68px) * var(--scale));
+    font-size: calc(clamp(46px, 15vw, 80px) * var(--scale));
     color: var(--teal);
   }
 
@@ -321,6 +324,7 @@
     <div class="right-controls">
       <span class="elapsed" id="elapsedText">00:00</span>
       <button class="pref-btn" id="fontBtn" title="Rozmiar czcionki">Aa</button>
+      <button class="pref-btn" id="fontFamilyBtn" title="Krój czcionki">Ff</button>
       <button class="pref-btn swatch-btn" id="themeBtn" title="Motyw kolorystyczny"><span class="swatch-dot" id="themeDot"></span></button>
       <button class="pref-btn" id="langBtn">PL</button>
     </div>
@@ -412,6 +416,14 @@
     { key: 'forest', a: '#93ae7c', b: '#cba25c' },
     { key: 'plum',   a: '#c98a9a', b: '#c9a24f' }
   ];
+  const FONTS = [
+    { label: 'Domyślna', stack: 'ui-monospace, "SF Mono", Menlo, monospace' },
+    { label: 'JetBrains Mono', stack: '"JetBrains Mono", ui-monospace, monospace' },
+    { label: 'Space Mono', stack: '"Space Mono", ui-monospace, monospace' },
+    { label: 'Orbitron', stack: '"Orbitron", sans-serif' },
+    { label: 'Rajdhani', stack: '"Rajdhani", sans-serif' },
+    { label: 'Archivo Black', stack: '"Archivo Black", sans-serif' }
+  ];
 
   let lang = localStorage.getItem('speedo_lang') || 'pl';
   if (!STRINGS[lang]) lang = 'pl';
@@ -419,6 +431,8 @@
   if (isNaN(sizeIndex) || sizeIndex < 0 || sizeIndex >= SIZE_ORDER.length) sizeIndex = 1;
   let themeIndex = parseInt(localStorage.getItem('speedo_theme_idx'), 10);
   if (isNaN(themeIndex) || themeIndex < 0 || themeIndex >= THEMES.length) themeIndex = 0;
+  let fontIndex = parseInt(localStorage.getItem('speedo_font_idx'), 10);
+  if (isNaN(fontIndex) || fontIndex < 0 || fontIndex >= FONTS.length) fontIndex = 0;
 
   // ---------- Elements ----------
   const startOverlay = document.getElementById('startOverlay');
@@ -435,6 +449,7 @@
   const labelCurrent = document.getElementById('labelCurrent');
   const labelAverage = document.getElementById('labelAverage');
   const fontBtn = document.getElementById('fontBtn');
+  const fontFamilyBtn = document.getElementById('fontFamilyBtn');
   const langBtn = document.getElementById('langBtn');
   const langBtnOverlay = document.getElementById('langBtnOverlay');
   const themeBtn = document.getElementById('themeBtn');
@@ -489,14 +504,26 @@
     applyTheme();
   }
 
+  function applyFontFamily() {
+    document.documentElement.style.setProperty('--num-font', FONTS[fontIndex].stack);
+    localStorage.setItem('speedo_font_idx', String(fontIndex));
+  }
+
+  function cycleFontFamily() {
+    fontIndex = (fontIndex + 1) % FONTS.length;
+    applyFontFamily();
+  }
+
   langBtn.addEventListener('click', cycleLang);
   langBtnOverlay.addEventListener('click', cycleLang);
   fontBtn.addEventListener('click', cycleSize);
+  fontFamilyBtn.addEventListener('click', cycleFontFamily);
   themeBtn.addEventListener('click', cycleTheme);
 
   applyLanguage();
   applySize();
   applyTheme();
+  applyFontFamily();
 
   // ---------- Geolocation logic ----------
   let watchId = null;
