@@ -18,6 +18,7 @@
     --teal: #5fb8ae;
     --danger: #c1440e;
     --danger-press: #9c360a;
+    --scale: 1;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -44,13 +45,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 22px 6px;
+    padding: 18px 18px 6px 22px;
+    gap: 10px;
   }
 
   .top-bar .status {
     font-size: 13px;
     color: var(--ink-dim);
     letter-spacing: 0.02em;
+    flex: 1;
+    min-width: 0;
   }
 
   .top-bar .status.live::before {
@@ -71,10 +75,36 @@
     50% { opacity: 0.35; }
   }
 
-  .top-bar .elapsed {
+  .top-bar .right-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .elapsed {
     font-variant-numeric: tabular-nums;
     font-size: 13px;
     color: var(--ink-dim);
+    margin-right: 4px;
+  }
+
+  .pref-btn {
+    appearance: none;
+    border: 1px solid var(--panel-edge);
+    background: var(--panel);
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 5px 8px;
+    line-height: 1;
+    opacity: 0.75;
+  }
+
+  .pref-btn:active {
+    opacity: 1;
+    transform: scale(0.95);
   }
 
   main {
@@ -124,7 +154,7 @@
   }
 
   .gauge--current .value {
-    font-size: clamp(64px, 22vw, 118px);
+    font-size: calc(clamp(64px, 22vw, 118px) * var(--scale));
     color: var(--amber);
   }
 
@@ -133,7 +163,7 @@
   }
 
   .gauge--average .value {
-    font-size: clamp(40px, 13vw, 68px);
+    font-size: calc(clamp(40px, 13vw, 68px) * var(--scale));
     color: var(--teal);
   }
 
@@ -182,6 +212,14 @@
     z-index: 10;
   }
 
+  .start-overlay .lang-row {
+    position: absolute;
+    top: calc(18px + env(safe-area-inset-top));
+    right: 20px;
+    display: flex;
+    gap: 6px;
+  }
+
   .start-overlay h1 {
     font-size: 22px;
     font-weight: 600;
@@ -221,26 +259,33 @@
 <body>
 
   <div class="start-overlay" id="startOverlay">
-    <h1>Prędkościomierz GPS</h1>
-    <p>Pokazuje aktualną prędkość i średnią prędkość na podstawie sygnału GPS. Trzymaj telefon w pobliżu okna dla lepszego odbioru.</p>
+    <div class="lang-row">
+      <button class="pref-btn" id="langBtnOverlay">PL</button>
+    </div>
+    <h1 id="titleText">Prędkościomierz GPS</h1>
+    <p id="descText">Pokazuje aktualną prędkość i średnią prędkość na podstawie sygnału GPS. Trzymaj telefon w pobliżu okna dla lepszego odbioru.</p>
     <button class="start-btn" id="startBtn">Rozpocznij pomiar</button>
     <p class="error-msg hidden" id="errorMsg"></p>
   </div>
 
   <div class="top-bar">
     <span class="status" id="statusText">Oczekiwanie na GPS…</span>
-    <span class="elapsed" id="elapsedText">00:00</span>
+    <div class="right-controls">
+      <span class="elapsed" id="elapsedText">00:00</span>
+      <button class="pref-btn" id="fontBtn" title="Rozmiar czcionki">Aa</button>
+      <button class="pref-btn" id="langBtn">PL</button>
+    </div>
   </div>
 
   <main>
     <div class="gauge gauge--current">
-      <span class="label">Prędkość</span>
+      <span class="label" id="labelCurrent">Prędkość</span>
       <span class="value" id="currentSpeed">0</span>
       <span class="unit">km/h</span>
     </div>
 
     <div class="gauge gauge--average">
-      <span class="label">Średnia</span>
+      <span class="label" id="labelAverage">Średnia</span>
       <span class="value" id="avgSpeed">0</span>
       <span class="unit">km/h</span>
       <span class="distance-note" id="distanceNote">0.00 km</span>
@@ -251,6 +296,72 @@
 
 <script>
 (function () {
+  const STRINGS = {
+    pl: {
+      title: 'Prędkościomierz GPS',
+      desc: 'Pokazuje aktualną prędkość i średnią prędkość na podstawie sygnału GPS. Trzymaj telefon w pobliżu okna dla lepszego odbioru.',
+      start: 'Rozpocznij pomiar',
+      waiting: 'Oczekiwanie na GPS…',
+      live: 'Sygnał GPS aktywny',
+      current: 'Prędkość',
+      average: 'Średnia',
+      reset: 'Zeruj średnią',
+      permDenied: 'Brak zgody na dostęp do lokalizacji.',
+      timeout: 'Przekroczono czas oczekiwania na sygnał GPS.',
+      generic: 'Nie udało się pobrać lokalizacji.',
+      unsupported: 'Ta przeglądarka nie obsługuje lokalizacji GPS.'
+    },
+    en: {
+      title: 'GPS Speedometer',
+      desc: 'Shows your current speed and average speed based on GPS. Keep the phone near a window for better reception.',
+      start: 'Start measuring',
+      waiting: 'Waiting for GPS…',
+      live: 'GPS signal active',
+      current: 'Speed',
+      average: 'Average',
+      reset: 'Reset average',
+      permDenied: 'Location access was denied.',
+      timeout: 'Timed out waiting for a GPS signal.',
+      generic: 'Could not get your location.',
+      unsupported: 'This browser does not support GPS location.'
+    },
+    de: {
+      title: 'GPS-Tacho',
+      desc: 'Zeigt deine aktuelle Geschwindigkeit und Durchschnittsgeschwindigkeit per GPS an. Halte das Telefon für besseren Empfang nahe an einem Fenster.',
+      start: 'Messung starten',
+      waiting: 'Warte auf GPS…',
+      live: 'GPS-Signal aktiv',
+      current: 'Geschwindigkeit',
+      average: 'Durchschnitt',
+      reset: 'Durchschnitt zurücksetzen',
+      permDenied: 'Zugriff auf den Standort wurde verweigert.',
+      timeout: 'Zeitüberschreitung beim Warten auf GPS-Signal.',
+      generic: 'Standort konnte nicht ermittelt werden.',
+      unsupported: 'Dieser Browser unterstützt keine GPS-Standortbestimmung.'
+    },
+    es: {
+      title: 'Velocímetro GPS',
+      desc: 'Muestra tu velocidad actual y la velocidad media según el GPS. Mantén el teléfono cerca de una ventana para mejor recepción.',
+      start: 'Iniciar medición',
+      waiting: 'Esperando señal GPS…',
+      live: 'Señal GPS activa',
+      current: 'Velocidad',
+      average: 'Media',
+      reset: 'Reiniciar media',
+      permDenied: 'Se denegó el acceso a la ubicación.',
+      timeout: 'Se agotó el tiempo esperando señal GPS.',
+      generic: 'No se pudo obtener la ubicación.',
+      unsupported: 'Este navegador no admite la ubicación GPS.'
+    }
+  };
+  const LANG_ORDER = ['pl', 'en', 'de', 'es'];
+  const SIZE_ORDER = [0.8, 1, 1.25];
+
+  let lang = localStorage.getItem('speedo_lang') || 'pl';
+  if (!STRINGS[lang]) lang = 'pl';
+  let sizeIndex = parseInt(localStorage.getItem('speedo_size_idx'), 10);
+  if (isNaN(sizeIndex) || sizeIndex < 0 || sizeIndex >= SIZE_ORDER.length) sizeIndex = 1;
+
   const startOverlay = document.getElementById('startOverlay');
   const startBtn = document.getElementById('startBtn');
   const errorMsg = document.getElementById('errorMsg');
@@ -260,6 +371,57 @@
   const avgSpeedEl = document.getElementById('avgSpeed');
   const distanceNoteEl = document.getElementById('distanceNote');
   const resetBtn = document.getElementById('resetBtn');
+  const titleText = document.getElementById('titleText');
+  const descText = document.getElementById('descText');
+  const labelCurrent = document.getElementById('labelCurrent');
+  const labelAverage = document.getElementById('labelAverage');
+  const fontBtn = document.getElementById('fontBtn');
+  const langBtn = document.getElementById('langBtn');
+  const langBtnOverlay = document.getElementById('langBtnOverlay');
+
+  let isLive = false;
+  let lastErrorKey = null;
+
+  function applyLanguage() {
+    const t = STRINGS[lang];
+    titleText.textContent = t.title;
+    descText.textContent = t.desc;
+    startBtn.textContent = t.start;
+    labelCurrent.textContent = t.current;
+    labelAverage.textContent = t.average;
+    resetBtn.textContent = t.reset;
+    langBtn.textContent = lang.toUpperCase();
+    langBtnOverlay.textContent = lang.toUpperCase();
+    if (!isLive) {
+      statusText.textContent = lastErrorKey ? t[lastErrorKey] : t.waiting;
+    } else {
+      statusText.textContent = t.live;
+    }
+    localStorage.setItem('speedo_lang', lang);
+  }
+
+  function applySize() {
+    document.documentElement.style.setProperty('--scale', SIZE_ORDER[sizeIndex]);
+    localStorage.setItem('speedo_size_idx', String(sizeIndex));
+  }
+
+  function cycleLang() {
+    const idx = LANG_ORDER.indexOf(lang);
+    lang = LANG_ORDER[(idx + 1) % LANG_ORDER.length];
+    applyLanguage();
+  }
+
+  function cycleSize() {
+    sizeIndex = (sizeIndex + 1) % SIZE_ORDER.length;
+    applySize();
+  }
+
+  langBtn.addEventListener('click', cycleLang);
+  langBtnOverlay.addEventListener('click', cycleLang);
+  fontBtn.addEventListener('click', cycleSize);
+
+  applyLanguage();
+  applySize();
 
   let watchId = null;
   let lastFix = null;
@@ -298,7 +460,9 @@
     const { latitude, longitude, speed } = pos.coords;
     const now = Date.now();
 
-    statusText.textContent = 'Sygnał GPS aktywny';
+    isLive = true;
+    lastErrorKey = null;
+    statusText.textContent = STRINGS[lang].live;
     statusText.classList.add('live');
     resetBtn.disabled = false;
 
@@ -337,19 +501,18 @@
   }
 
   function handleError(err) {
-    let msg = 'Nie udało się pobrać lokalizacji.';
-    if (err.code === err.PERMISSION_DENIED) {
-      msg = 'Brak zgody na dostęp do lokalizacji.';
-    } else if (err.code === err.TIMEOUT) {
-      msg = 'Przekroczono czas oczekiwania na sygnał GPS.';
-    }
-    statusText.textContent = msg;
+    isLive = false;
+    let key = 'generic';
+    if (err.code === err.PERMISSION_DENIED) key = 'permDenied';
+    else if (err.code === err.TIMEOUT) key = 'timeout';
+    lastErrorKey = key;
+    statusText.textContent = STRINGS[lang][key];
     statusText.classList.remove('live');
   }
 
   function startTracking() {
     if (!('geolocation' in navigator)) {
-      errorMsg.textContent = 'Ta przeglądarka nie obsługuje lokalizacji GPS.';
+      errorMsg.textContent = STRINGS[lang].unsupported;
       errorMsg.classList.remove('hidden');
       return;
     }
