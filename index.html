@@ -21,6 +21,42 @@
     --scale: 1;
   }
 
+  html[data-theme="slate"] {
+    --bg: #12151b;
+    --panel: #1a1f29;
+    --panel-edge: #262d3a;
+    --ink: #e9ecf2;
+    --ink-dim: #8891a3;
+    --amber: #7fa3c9;
+    --teal: #c2a878;
+    --danger: #a8552f;
+    --danger-press: #874428;
+  }
+
+  html[data-theme="forest"] {
+    --bg: #12160f;
+    --panel: #191f16;
+    --panel-edge: #262e20;
+    --ink: #ecefe6;
+    --ink-dim: #8b9483;
+    --amber: #93ae7c;
+    --teal: #cba25c;
+    --danger: #a3502f;
+    --danger-press: #834025;
+  }
+
+  html[data-theme="plum"] {
+    --bg: #170f14;
+    --panel: #201319;
+    --panel-edge: #2e1c25;
+    --ink: #f1e9ec;
+    --ink-dim: #9c8791;
+    --amber: #c98a9a;
+    --teal: #c9a24f;
+    --danger: #973342;
+    --danger-press: #7a2835;
+  }
+
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
@@ -105,6 +141,18 @@
   .pref-btn:active {
     opacity: 1;
     transform: scale(0.95);
+  }
+
+  .swatch-btn {
+    padding: 5px;
+  }
+
+  .swatch-dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   main {
@@ -273,6 +321,7 @@
     <div class="right-controls">
       <span class="elapsed" id="elapsedText">00:00</span>
       <button class="pref-btn" id="fontBtn" title="Rozmiar czcionki">Aa</button>
+      <button class="pref-btn swatch-btn" id="themeBtn" title="Motyw kolorystyczny"><span class="swatch-dot" id="themeDot"></span></button>
       <button class="pref-btn" id="langBtn">PL</button>
     </div>
   </div>
@@ -296,6 +345,7 @@
 
 <script>
 (function () {
+  // ---------- Translations ----------
   const STRINGS = {
     pl: {
       title: 'Prędkościomierz GPS',
@@ -356,12 +406,21 @@
   };
   const LANG_ORDER = ['pl', 'en', 'de', 'es'];
   const SIZE_ORDER = [0.8, 1, 1.25];
+  const THEMES = [
+    { key: 'amber',  a: '#e8a33d', b: '#5fb8ae' },
+    { key: 'slate',  a: '#7fa3c9', b: '#c2a878' },
+    { key: 'forest', a: '#93ae7c', b: '#cba25c' },
+    { key: 'plum',   a: '#c98a9a', b: '#c9a24f' }
+  ];
 
   let lang = localStorage.getItem('speedo_lang') || 'pl';
   if (!STRINGS[lang]) lang = 'pl';
   let sizeIndex = parseInt(localStorage.getItem('speedo_size_idx'), 10);
   if (isNaN(sizeIndex) || sizeIndex < 0 || sizeIndex >= SIZE_ORDER.length) sizeIndex = 1;
+  let themeIndex = parseInt(localStorage.getItem('speedo_theme_idx'), 10);
+  if (isNaN(themeIndex) || themeIndex < 0 || themeIndex >= THEMES.length) themeIndex = 0;
 
+  // ---------- Elements ----------
   const startOverlay = document.getElementById('startOverlay');
   const startBtn = document.getElementById('startBtn');
   const errorMsg = document.getElementById('errorMsg');
@@ -378,6 +437,8 @@
   const fontBtn = document.getElementById('fontBtn');
   const langBtn = document.getElementById('langBtn');
   const langBtnOverlay = document.getElementById('langBtnOverlay');
+  const themeBtn = document.getElementById('themeBtn');
+  const themeDot = document.getElementById('themeDot');
 
   let isLive = false;
   let lastErrorKey = null;
@@ -416,13 +477,28 @@
     applySize();
   }
 
+  function applyTheme() {
+    const t = THEMES[themeIndex];
+    document.documentElement.setAttribute('data-theme', t.key);
+    themeDot.style.background = 'linear-gradient(135deg, ' + t.a + ' 50%, ' + t.b + ' 50%)';
+    localStorage.setItem('speedo_theme_idx', String(themeIndex));
+  }
+
+  function cycleTheme() {
+    themeIndex = (themeIndex + 1) % THEMES.length;
+    applyTheme();
+  }
+
   langBtn.addEventListener('click', cycleLang);
   langBtnOverlay.addEventListener('click', cycleLang);
   fontBtn.addEventListener('click', cycleSize);
+  themeBtn.addEventListener('click', cycleTheme);
 
   applyLanguage();
   applySize();
+  applyTheme();
 
+  // ---------- Geolocation logic ----------
   let watchId = null;
   let lastFix = null;
   let totalDistanceKm = 0;
